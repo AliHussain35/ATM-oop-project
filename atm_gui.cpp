@@ -740,47 +740,54 @@ void MyFrame::HandleKeypadEnter() {
             break;
 
         case STATE_WITHDRAW_CONFIRM_PIN:
-            if (enteredInput.length() == 4 && wxString(enteredInput).IsNumber()) {
-                string pinConfirm = enteredInput;
-                if (currentAccount && currentAccount->authenticate(pinConfirm)) {
-                    const double MAX_SAVINGS_W = 25000.0; //setting a limit for savings account
-                    const double MAX_CURRENT_W = 50000.0; //setting a limit for current account
-                    bool limitExceeded = false;
+    if (enteredInput.length() == 4 && wxString(enteredInput).IsNumber()) {
+        string pinConfirm = enteredInput;
+        if (currentAccount && currentAccount->authenticate(pinConfirm)) {
+            const double MAX_SAVINGS_W = 25000.0; //setting a limit for savings account
+            const double MAX_CURRENT_W = 50000.0; //setting a limit for current account
+            bool limitExceeded = false;
 
-                    if (currentMode == MODE_SAVINGS && tempWithdrawAmount > MAX_SAVINGS_W){
-                        wxLogError("Withdrawal failed: Amount $%.2f exceeds limit ($%.2f) for Savings mode.", tempWithdrawAmount, MAX_SAVINGS_W);
-                        limitExceeded = true;
-                    } else if (currentMode == MODE_CURRENT && tempWithdrawAmount > MAX_CURRENT_W) {
-                        wxLogError("Withdrawal failed: Amount $%.2f exceeds limit ($%.2f) for Current mode.", tempWithdrawAmount, MAX_CURRENT_W);
-                        limitExceeded = true;
-                    }
+            
+            if (fmod(tempWithdrawAmount, 500.0) != 0) {
+                wxLogError("Withdrawal failed: Amount must be a multiple of 500.");
+                limitExceeded = true;
+            }
 
-                    //checking acc funds
-                    if (!limitExceeded && tempWithdrawAmount > currentAccount->getBalance()){
-                         wxLogError("Withdrawal failed: Insufficient funds (Balance: $%.2f).", currentAccount->getBalance());
-                         limitExceeded = true;
-                    }
+            
+            if (!limitExceeded && currentMode == MODE_SAVINGS && tempWithdrawAmount > MAX_SAVINGS_W){
+                wxLogError("Withdrawal failed: Amount $%.2f exceeds limit ($%.2f) for Savings mode.", tempWithdrawAmount, MAX_SAVINGS_W);
+                limitExceeded = true;
+            } else if (!limitExceeded && currentMode == MODE_CURRENT && tempWithdrawAmount > MAX_CURRENT_W) {
+                wxLogError("Withdrawal failed: Amount $%.2f exceeds limit ($%.2f) for Current mode.", tempWithdrawAmount, MAX_CURRENT_W);
+                limitExceeded = true;
+            }
 
-                    
-                    if (!limitExceeded){
-                        wxLogInfo("PIN OK & Limits OK. Calling Bank::withdraw for $%.2f", tempWithdrawAmount);
-                        theBank.withdraw(currentAccount->getAccountNum(), tempWithdrawAmount, pinConfirm);
-                        UpdateBalanceDisplay(); 
-                    
-                    }else{
-                        wxBell(); 
-                    }
-                 }else{
-                     
-                     wxLogError("Incorrect PIN entered during withdrawal confirmation."); wxBell();
-                 }
-                 SwitchScreen(STATE_OPTIONS);
-             } else {
-                 //pin format wrong during confirmation
-                 wxLogError("Invalid PIN format entered during confirmation (must be 4 digits)."); wxBell();
-                 enteredInput = ""; UpdateDisplay(); 
-             }
-             break;
+            
+            if (!limitExceeded && tempWithdrawAmount > currentAccount->getBalance()){
+                 wxLogError("Withdrawal failed: Insufficient funds (Balance: $%.2f).", currentAccount->getBalance());
+                 limitExceeded = true;
+            }
+
+            
+            if (!limitExceeded){
+                wxLogInfo("PIN OK & Limits OK. Calling Bank::withdraw for $%.2f", tempWithdrawAmount);
+                theBank.withdraw(currentAccount->getAccountNum(), tempWithdrawAmount, pinConfirm);
+                UpdateBalanceDisplay(); 
+            } else {
+                wxBell(); 
+            }
+        } else {
+            wxLogError("Incorrect PIN entered during withdrawal confirmation."); 
+            wxBell();
+        }
+        SwitchScreen(STATE_OPTIONS);
+    } else {
+        wxLogError("Invalid PIN format entered during confirmation (must be 4 digits)."); 
+        wxBell();
+        enteredInput = ""; 
+        UpdateDisplay(); 
+    }
+    break;
 
         default:
              wxLogWarning("Enter pressed in unhandled state: %d", static_cast<int>(currentState));
@@ -1003,4 +1010,3 @@ void MyFrame::OnOtherAmountButton(wxCommandEvent& event) {
     
     SwitchScreen(STATE_WITHDRAW_AMOUNT);
 }
-
